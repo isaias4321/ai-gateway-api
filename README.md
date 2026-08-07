@@ -1,5 +1,6 @@
 # 🧩 AI Gateway API
 
+[![CI](https://github.com/isaias4321/ai-gateway-api/actions/workflows/ci.yml/badge.svg)](https://github.com/isaias4321/ai-gateway-api/actions/workflows/ci.yml)
 [![Node](https://img.shields.io/badge/Node.js-22-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Fastify](https://img.shields.io/badge/Fastify-5-000000?logo=fastify&logoColor=white)](https://fastify.dev/)
@@ -33,6 +34,17 @@ A suíte de testes cobrindo rate limiter, cache, retry e a rota de chat —
 tudo com providers mockados, sem chamadas reais às APIs de LLM:
 
 ![23 testes passando: rate limiter, cache, retry e rota de chat](docs/tests.png)
+
+Rodando dentro do próprio Docker (`docker compose up --build`), com o
+`HEALTHCHECK` batendo automaticamente em `/health` a cada 30s e o Swagger
+respondendo normalmente pela porta exposta pelo container:
+
+<video src="docs/docker-demo.mp4" controls width="700">
+  Seu navegador não suporta vídeo embutido — veja o arquivo em
+  <a href="docs/docker-demo.mp4">docs/docker-demo.mp4</a>.
+</video>
+
+![Endpoint /health respondendo através do Swagger, servido de dentro do container](docs/docker-health.png)
 
 ## ⚙️ O que o gateway resolve
 
@@ -132,6 +144,46 @@ provedores são mockados (`vi.fn()`), então a suíte roda offline e de forma
 determinística. Isso cobre: autenticação, validação de entrada, cache-hit,
 rate limiting e retry com backoff.
 
+## 🐳 Rodando com Docker
+
+O projeto já vem com um `Dockerfile` multi-stage (build separado da imagem
+final, sem devDependencies em produção) e `HEALTHCHECK` usando o próprio
+endpoint `/health`.
+
+**Com Docker Compose (recomendado — sobe com um único comando):**
+
+```bash
+cp .env.example .env   # preencha suas chaves antes de subir
+docker compose up --build
+```
+
+Acesse `http://localhost:3000/docs`. Pra derrubar: `docker compose down`.
+
+**Com Docker puro, sem compose:**
+
+```bash
+docker build -t ai-gateway-api .
+docker run -p 3000:3000 --env-file .env ai-gateway-api
+```
+
+## ☁️ Deploy (Render — gratuito)
+
+O `Dockerfile` já é suficiente para deploy em qualquer plataforma baseada
+em containers. Passo a passo usando o [Render](https://render.com):
+
+1. Crie um **Web Service** novo apontando para este repositório
+2. **Environment**: Docker (o Render detecta o `Dockerfile` automaticamente)
+3. Em **Environment Variables**, adicione todas as chaves do `.env.example`
+   (pelo menos `GATEWAY_API_KEYS` e uma chave real de provedor —
+   `OPENAI_API_KEY` ou `ANTHROPIC_API_KEY`)
+4. **Health Check Path**: `/health` (o Render usa isso para saber se o
+   serviço está de pé antes de rotear tráfego)
+5. Deploy — a URL pública já serve o Swagger em `/docs`
+
+> 💡 O plano gratuito do Render hiberna após 15 min sem tráfego, o que é
+> aceitável para uma demo de portfólio, mas não para produção real — nesse
+> caso, o plano Starter mantém o serviço sempre ativo.
+
 ## 🧠 Decisões de design
 
 - **Token bucket em vez de janela fixa** para rate limiting: permite
@@ -156,6 +208,19 @@ projeto, o `typescript-eslint` ainda não suporta TS 7 oficialmente (issue
 de tracking). Prefiro um projeto com lint, typecheck e CI 100% funcionais a
 usar a versão mais nova por si só — mas vale revisitar essa escolha quando
 o ecossistema de lint alcançar o TS 7.
+
+## ✅ Nível de prontidão
+
+O que já está implementado e testado neste projeto:
+
+- [x] Testes automatizados (23 testes, providers mockados, sem chamadas reais)
+- [x] Docker multi-stage + `HEALTHCHECK`
+- [x] Docker Compose (sobe com um comando)
+- [x] CI (GitHub Actions): lint → typecheck → build → test em todo push/PR
+- [x] Validação de variáveis de ambiente com Zod (falha rápido se a config estiver errada)
+- [x] Documentação interativa da API (Swagger/OpenAPI em `/docs`)
+- [ ] Deploy público ativo (ver seção [☁️ Deploy](#️-deploy-render--gratuito) para o passo a passo)
+- [ ] Observabilidade (métricas/tracing) — ver roadmap abaixo
 
 ## 🗺️ Possíveis evoluções
 

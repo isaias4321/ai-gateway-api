@@ -6,109 +6,108 @@
 [![Fastify](https://img.shields.io/badge/Fastify-5-000000?logo=fastify&logoColor=white)](https://fastify.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-Um gateway unificado para múltiplos provedores de LLM (OpenAI, Anthropic)
-escrito em Node.js + TypeScript. Em vez de cada aplicação da empresa
-integrar diretamente com a API de cada provedor, elas falam com uma única
-API consistente — e o gateway cuida de streaming, rate limiting, cache,
-retry automático e troca de provedor sem downtime.
+A unified gateway for multiple LLM providers (OpenAI, Anthropic) written
+in Node.js + TypeScript. Instead of every application in a company
+integrating directly with each provider's API, they talk to one
+consistent API — and the gateway handles streaming, rate limiting,
+caching, automatic retries, and provider switching with zero downtime.
 
-> Este é o tipo de infraestrutura que empresas reais constroem ao redor de
-> modelos de IA em produção. O projeto foi feito para demonstrar
-> competências de engenharia de backend aplicada a IA: não é sobre "chamar
-> uma API", é sobre construir uma camada resiliente, observável e tipada em
-> volta dela.
+> This is the kind of infrastructure real companies build around AI
+> models in production. The project was built to demonstrate backend
+> engineering skills applied to AI: it's not about "calling an API," it's
+> about building a resilient, observable, strongly-typed layer around it.
 
 ## 🖼️ Demo
 
-Navegação pela documentação interativa (Swagger UI) e explicação dos três
-endpoints do gateway:
+Walking through the interactive documentation (Swagger UI) and explaining
+the gateway's three endpoints:
 
 <video src="docs/demo.mp4" controls width="700">
-  Seu navegador não suporta vídeo embutido — veja o arquivo em
+  Your browser doesn't support embedded video — see the file at
   <a href="docs/demo.mp4">docs/demo.mp4</a>.
 </video>
 
-![Swagger UI com os endpoints do gateway](docs/swagger-overview.png)
+![Swagger UI showing the gateway's endpoints](docs/swagger-overview.png)
 
-A suíte de testes cobrindo rate limiter, cache, retry e a rota de chat —
-tudo com providers mockados, sem chamadas reais às APIs de LLM:
+The test suite covering the rate limiter, cache, retry logic, and the
+chat route — all with mocked providers, no real calls to any LLM API:
 
-![23 testes passando: rate limiter, cache, retry e rota de chat](docs/tests.png)
+![23 tests passing: rate limiter, cache, retry, and the chat route](docs/tests.png)
 
-Rodando dentro do próprio Docker (`docker compose up --build`), com o
-`HEALTHCHECK` batendo automaticamente em `/health` a cada 30s e o Swagger
-respondendo normalmente pela porta exposta pelo container:
+Running inside Docker itself (`docker compose up --build`), with the
+`HEALTHCHECK` automatically hitting `/health` every 30s and Swagger
+responding normally through the port exposed by the container:
 
 <video src="docs/docker-demo.mp4" controls width="700">
-  Seu navegador não suporta vídeo embutido — veja o arquivo em
+  Your browser doesn't support embedded video — see the file at
   <a href="docs/docker-demo.mp4">docs/docker-demo.mp4</a>.
 </video>
 
-![Endpoint /health respondendo através do Swagger, servido de dentro do container](docs/docker-health.png)
+![The /health endpoint responding through Swagger, served from inside the container](docs/docker-health.png)
 
-## ⚙️ O que o gateway resolve
+## ⚙️ What the gateway solves
 
-| Problema comum ao integrar múltiplas IAs direto no código | Como o gateway resolve |
+| Common problem when integrating multiple AIs directly in the code | How the gateway solves it |
 |---|---|
-| Cada provedor tem um formato de request/response diferente | Uma única interface: `{ provider, model, messages }` para qualquer um |
-| Rate limit da OpenAI/Anthropic estoura sem aviso | Rate limiting próprio (token bucket) por chave de cliente, com header `x-ratelimit-remaining` |
-| Erros transitórios (429, 5xx) derrubam a aplicação | Retry automático com backoff exponencial + jitter |
-| Perguntas repetidas custam dinheiro de novo | Cache em memória com TTL para respostas idênticas |
-| Trocar de provedor exige reescrever a integração inteira | Adapters intercambiáveis atrás da mesma interface (`ProviderAdapter`) |
+| Every provider has a different request/response format | A single interface: `{ provider, model, messages }` for any of them |
+| OpenAI/Anthropic rate limits get hit without warning | Its own rate limiting (token bucket) per client key, with an `x-ratelimit-remaining` header |
+| Transient errors (429, 5xx) crash the application | Automatic retry with exponential backoff + jitter |
+| Repeated questions cost money again | In-memory TTL cache for identical responses |
+| Switching providers means rewriting the whole integration | Swappable adapters behind the same interface (`ProviderAdapter`) |
 
 ## 🧱 Stack
 
-| Camada | Tecnologia |
+| Layer | Technology |
 |---|---|
 | Runtime | Node.js 22 |
-| Linguagem | TypeScript 6 (strict mode) |
-| Framework HTTP | Fastify 5 |
-| Validação | Zod 4 |
-| Logging | Pino (logs estruturados em JSON) |
-| Testes | Vitest 4 (23 testes, com mocks de rede) |
+| Language | TypeScript 6 (strict mode) |
+| HTTP framework | Fastify 5 |
+| Validation | Zod 4 |
+| Logging | Pino (structured JSON logs) |
+| Testing | Vitest 4 (23 tests, with network mocks) |
 | Lint | ESLint 10 + typescript-eslint (flat config) |
-| Docs da API | Swagger/OpenAPI (`@fastify/swagger`) em `/docs` |
+| API docs | Swagger/OpenAPI (`@fastify/swagger`) at `/docs` |
 
-## 📁 Estrutura
+## 📁 Structure
 
 ```
 src/
-├── config.ts                # variáveis de ambiente, validadas com Zod
-├── app.ts                   # monta o Fastify: plugins + rotas
+├── config.ts                # environment variables, validated with Zod
+├── app.ts                   # assembles Fastify: plugins + routes
 ├── server.ts                 # entrypoint
-├── schemas/chat.ts            # contratos de request/response (Zod)
+├── schemas/chat.ts            # request/response contracts (Zod)
 ├── providers/
-│   ├── types.ts                 # interface ProviderAdapter
-│   ├── openai.ts                  # adapter OpenAI
-│   ├── anthropic.ts                # adapter Anthropic
-│   └── registry.ts                  # monta o mapa provider -> adapter
+│   ├── types.ts                 # ProviderAdapter interface
+│   ├── openai.ts                  # OpenAI adapter
+│   ├── anthropic.ts                # Anthropic adapter
+│   └── registry.ts                  # builds the provider -> adapter map
 ├── lib/
-│   ├── cache.ts                      # TtlCache (cache com expiração)
+│   ├── cache.ts                      # TtlCache (cache with expiration)
 │   ├── rateLimiter.ts                  # TokenBucketRateLimiter
-│   ├── retry.ts                          # backoff exponencial + jitter
-│   └── logger.ts                           # logger estruturado (pino)
-├── plugins/auth.ts             # valida x-api-key
+│   ├── retry.ts                          # exponential backoff + jitter
+│   └── logger.ts                           # structured logger (pino)
+├── plugins/auth.ts             # validates x-api-key
 └── routes/
-    ├── health.ts                  # GET /health (público)
+    ├── health.ts                  # GET /health (public)
     ├── models.ts                    # GET /v1/models
     └── chat.ts                        # POST /v1/chat/completions
 
-test/                       # 23 testes: rate limiter, cache, retry, rota de chat
+test/                       # 23 tests: rate limiter, cache, retry, chat route
 ```
 
-## 🚀 Como rodar localmente
+## 🚀 Running locally
 
 ```bash
 git clone https://github.com/isaias4321/ai-gateway-api.git
 cd ai-gateway-api
 npm install
-cp .env.example .env   # preencha OPENAI_API_KEY e/ou ANTHROPIC_API_KEY
+cp .env.example .env   # fill in OPENAI_API_KEY and/or ANTHROPIC_API_KEY
 npm run dev
 ```
 
-Acesse a documentação interativa em **<http://localhost:3000/docs>**.
+Visit the interactive documentation at **<http://localhost:3000/docs>**.
 
-## 📡 Exemplo de uso
+## 📡 Usage example
 
 ```bash
 curl -X POST http://localhost:3000/v1/chat/completions \
@@ -117,119 +116,120 @@ curl -X POST http://localhost:3000/v1/chat/completions \
   -d '{
     "provider": "openai",
     "model": "gpt-4o-mini",
-    "messages": [{ "role": "user", "content": "Explique o que é RAG em uma frase." }]
+    "messages": [{ "role": "user", "content": "Explain what RAG is in one sentence." }]
   }'
 ```
 
-Trocar para a Anthropic é só mudar o campo `provider` — o resto do contrato
-é idêntico:
+Switching to Anthropic is just a matter of changing the `provider`
+field — the rest of the contract stays identical:
 
 ```json
 { "provider": "anthropic", "model": "claude-sonnet-4-6", "messages": [...] }
 ```
 
-**Streaming** (Server-Sent Events): adicione `"stream": true` ao corpo da
-requisição e consuma a resposta como texto incremental.
+**Streaming** (Server-Sent Events): add `"stream": true` to the request
+body and consume the response as incremental text.
 
-## 🧪 Rodando os testes
+## 🧪 Running the tests
 
 ```bash
-npm test          # roda a suíte uma vez
-npm run typecheck # verifica tipos sem gerar build
-npm run lint       # verifica qualidade/estilo de código
+npm test          # runs the suite once
+npm run typecheck # checks types without emitting a build
+npm run lint       # checks code style/quality
 ```
 
-Os testes não fazem chamadas reais às APIs da OpenAI/Anthropic — os
-provedores são mockados (`vi.fn()`), então a suíte roda offline e de forma
-determinística. Isso cobre: autenticação, validação de entrada, cache-hit,
-rate limiting e retry com backoff.
+The tests don't make real calls to the OpenAI/Anthropic APIs — providers
+are mocked (`vi.fn()`), so the suite runs offline and deterministically.
+This covers: authentication, input validation, cache hits, rate
+limiting, and retry with backoff.
 
-## 🐳 Rodando com Docker
+## 🐳 Running with Docker
 
-O projeto já vem com um `Dockerfile` multi-stage (build separado da imagem
-final, sem devDependencies em produção) e `HEALTHCHECK` usando o próprio
-endpoint `/health`.
+The project already ships with a multi-stage `Dockerfile` (build stage
+separate from the final image, no devDependencies in production) and a
+`HEALTHCHECK` using the `/health` endpoint itself.
 
-**Com Docker Compose (recomendado — sobe com um único comando):**
+**With Docker Compose (recommended — spins up with a single command):**
 
 ```bash
-cp .env.example .env   # preencha suas chaves antes de subir
+cp .env.example .env   # fill in your keys before starting
 docker compose up --build
 ```
 
-Acesse `http://localhost:3000/docs`. Pra derrubar: `docker compose down`.
+Visit `http://localhost:3000/docs`. To stop it: `docker compose down`.
 
-**Com Docker puro, sem compose:**
+**With plain Docker, no compose:**
 
 ```bash
 docker build -t ai-gateway-api .
 docker run -p 3000:3000 --env-file .env ai-gateway-api
 ```
 
-## ☁️ Deploy (Render — gratuito)
+## ☁️ Deploy (Render — free)
 
-O `Dockerfile` já é suficiente para deploy em qualquer plataforma baseada
-em containers. Passo a passo usando o [Render](https://render.com):
+The `Dockerfile` alone is enough to deploy to any container-based
+platform. Step by step using [Render](https://render.com):
 
-1. Crie um **Web Service** novo apontando para este repositório
-2. **Environment**: Docker (o Render detecta o `Dockerfile` automaticamente)
-3. Em **Environment Variables**, adicione todas as chaves do `.env.example`
-   (pelo menos `GATEWAY_API_KEYS` e uma chave real de provedor —
-   `OPENAI_API_KEY` ou `ANTHROPIC_API_KEY`)
-4. **Health Check Path**: `/health` (o Render usa isso para saber se o
-   serviço está de pé antes de rotear tráfego)
-5. Deploy — a URL pública já serve o Swagger em `/docs`
+1. Create a new **Web Service** pointing to this repository
+2. **Environment**: Docker (Render auto-detects the `Dockerfile`)
+3. Under **Environment Variables**, add all the keys from `.env.example`
+   (at least `GATEWAY_API_KEYS` and one real provider key —
+   `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`)
+4. **Health Check Path**: `/health` (Render uses this to know whether the
+   service is up before routing traffic to it)
+5. Deploy — the public URL will serve Swagger at `/docs`
 
-> 💡 O plano gratuito do Render hiberna após 15 min sem tráfego, o que é
-> aceitável para uma demo de portfólio, mas não para produção real — nesse
-> caso, o plano Starter mantém o serviço sempre ativo.
+> 💡 Render's free tier sleeps after 15 minutes of no traffic, which is
+> fine for a portfolio demo but not for real production — for that, the
+> Starter plan keeps the service always on.
 
-## 🧠 Decisões de design
+## 🧠 Design decisions
 
-- **Token bucket em vez de janela fixa** para rate limiting: permite
-  rajadas curtas de tráfego sem bloquear o usuário, mantendo um teto médio
-  sustentado — mais amigável do que um contador que zera de uma vez a cada
-  minuto.
-- **Retry só em erros que valem a pena repetir**: 429 (rate limit) e 5xx
-  (erro transitório do servidor) disparam retry; 4xx de cliente (ex: 400 de
-  validação) não — tentar de novo não vai mudar o resultado.
-- **Streaming via `reply.hijack()`**: o Fastify assume controle total da
-  resposta HTTP para poder repassar o stream do provedor em tempo real, sem
-  esperar a resposta completa antes de começar a enviar ao cliente.
-- **Cache com chave determinística**: a chave é gerada a partir do corpo
-  inteiro da requisição (JSON canonicalizado), então só respostas
-  genuinamente idênticas são reaproveitadas.
+- **Token bucket instead of a fixed window** for rate limiting: allows
+  short traffic bursts without blocking the user, while still enforcing
+  a sustained average cap — friendlier than a counter that resets all at
+  once every minute.
+- **Retry only on errors worth retrying**: 429 (rate limit) and 5xx
+  (transient server error) trigger a retry; client-side 4xx errors (e.g.,
+  a 400 validation error) don't — retrying wouldn't change the outcome.
+- **Streaming via `reply.hijack()`**: Fastify takes full control of the
+  HTTP response so it can relay the provider's stream in real time,
+  without waiting for the full response before sending anything to the
+  client.
+- **Deterministic cache key**: the key is generated from the entire
+  request body (canonicalized JSON), so only genuinely identical
+  responses get reused.
 
-## ⚠️ Nota sobre versões
+## ⚠️ Note on versions
 
-Este projeto usa TypeScript 6.0.3 em vez do recém-lançado TypeScript 7
-(compilador reescrito em Go). O motivo: no momento da criação deste
-projeto, o `typescript-eslint` ainda não suporta TS 7 oficialmente (issue
-de tracking). Prefiro um projeto com lint, typecheck e CI 100% funcionais a
-usar a versão mais nova por si só — mas vale revisitar essa escolha quando
-o ecossistema de lint alcançar o TS 7.
+This project uses TypeScript 6.0.3 instead of the newly-released
+TypeScript 7 (compiler rewritten in Go). Reason: at the time this project
+was built, `typescript-eslint` didn't officially support TS 7 yet
+(tracking issue). I'd rather have a project with fully working lint,
+typecheck, and CI than use the newest version just for its own sake — but
+it's worth revisiting once the lint ecosystem catches up to TS 7.
 
-## ✅ Nível de prontidão
+## ✅ Production readiness
 
-O que já está implementado e testado neste projeto:
+What's already implemented and tested in this project:
 
-- [x] Testes automatizados (23 testes, providers mockados, sem chamadas reais)
-- [x] Docker multi-stage + `HEALTHCHECK`
-- [x] Docker Compose (sobe com um comando)
-- [x] CI (GitHub Actions): lint → typecheck → build → test em todo push/PR
-- [x] Validação de variáveis de ambiente com Zod (falha rápido se a config estiver errada)
-- [x] Documentação interativa da API (Swagger/OpenAPI em `/docs`)
-- [ ] Deploy público ativo (ver seção [☁️ Deploy](#️-deploy-render--gratuito) para o passo a passo)
-- [ ] Observabilidade (métricas/tracing) — ver roadmap abaixo
+- [x] Automated tests (23 tests, mocked providers, no real calls)
+- [x] Multi-stage Docker + `HEALTHCHECK`
+- [x] Docker Compose (spins up with one command)
+- [x] CI (GitHub Actions): lint → typecheck → build → test on every push/PR
+- [x] Environment variable validation with Zod (fails fast on bad config)
+- [x] Interactive API documentation (Swagger/OpenAPI at `/docs`)
+- [ ] Active public deployment (see the [☁️ Deploy](#️-deploy-render--free) section for the steps)
+- [ ] Observability (metrics/tracing) — see roadmap below
 
-## 🗺️ Possíveis evoluções
+## 🗺️ Possible improvements
 
-- [ ] Suporte a mais provedores (Groq, Google Gemini, modelos locais via Ollama)
-- [ ] Cache distribuído (Redis) para funcionar com múltiplas réplicas
-- [ ] Rate limiting distribuído (hoje é em memória, por instância)
-- [ ] Métricas via OpenTelemetry (latência por provedor, taxa de erro, uso de tokens)
-- [ ] Roteamento automático: escolher o provedor mais barato/rápido disponível
+- [ ] Support for more providers (Groq, Google Gemini, local models via Ollama)
+- [ ] Distributed cache (Redis) to work across multiple replicas
+- [ ] Distributed rate limiting (currently in-memory, per instance)
+- [ ] Metrics via OpenTelemetry (per-provider latency, error rate, token usage)
+- [ ] Automatic routing: pick the cheapest/fastest available provider
 
-## 📄 Licença
+## 📄 License
 
 MIT
